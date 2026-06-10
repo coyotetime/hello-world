@@ -651,7 +651,7 @@ function submitGuess() {
   const guess = currentGuess.join('');
 
   if (!VALID_WORDS.has(guess)) {
-    shakeRow(currentRow);
+    shakeRow(currentRow, () => clearRow(currentRow));
     showToast('Not a word');
     return;
   }
@@ -776,37 +776,27 @@ function showToast(msg) {
 // ─────────────────────────────────────────────
 // SHAKE
 // ─────────────────────────────────────────────
-function shakeRow(row) {
-  // Get the grid rows by wrapping tiles in a logical row container
-  // (tiles are in a flat grid, so we wrap via the DOM)
+function shakeRow(row, onDone) {
   const tiles = tileEls[row];
-  tiles.forEach(t => t.classList.add('shake-tile'));
-
-  // We animate the grid wrapper by temporarily wrapping the row's tiles
-  // Instead, animate each tile with a single shake class on the first tile
-  // and use a CSS sibling trick — simpler: apply shake to a ghost wrapper
-  const wrapper = document.createElement('div');
-  wrapper.className = 'row';
-  wrapper.style.cssText = 'display:contents';
-
-  // Apply shake via dataset trick on the tile-inner
-  tiles[0].closest('#grid').dataset.shakeRow = row;
-
   tiles.forEach(t => {
     t.style.animation = 'none';
-    void t.offsetWidth; // reflow
-    t.style.animation = '';
-    t.classList.add('row');
-  });
-
-  // Simpler: just animate each tile simultaneously
-  tiles.forEach(t => {
+    void t.offsetWidth; // force reflow so restart works
     t.style.animation = 'shake 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97)';
   });
-
   setTimeout(() => {
-    tiles.forEach(t => { t.style.animation = ''; t.classList.remove('row'); });
+    tiles.forEach(t => { t.style.animation = ''; });
+    if (onDone) onDone();
   }, 400);
+}
+
+// Clear the current row's tiles and reset input state so the player can retype.
+function clearRow(row) {
+  tileEls[row].forEach(t => {
+    t.querySelector('.tile-front').textContent = '';
+    t.classList.remove('filled', 'pop');
+  });
+  currentCol   = 0;
+  currentGuess = [];
 }
 
 // ─────────────────────────────────────────────
